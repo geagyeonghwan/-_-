@@ -219,7 +219,7 @@
         ctx.stroke();
 
         if (t < 1) {
-          requestAnimationFrame(frame);
+          setTimeout(() => frame(performance.now()), 16);
         } else {
           onDone(endCol);
         }
@@ -228,8 +228,7 @@
         onDone(endCol);
       }
     }
-    layout();
-    requestAnimationFrame(frame);
+    frame(startTime);
   }
 
   function setControlsDisabled(disabled) {
