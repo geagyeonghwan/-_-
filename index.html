@@ -222,11 +222,22 @@
     countLabel.textContent = n;
   }
 
+  function invalidateLadder() {
+    if (!ladder) return;
+    ladder = null;
+    animating = false;
+    resultPanel.innerHTML = '';
+    rerollBtn.disabled = true;
+    revealAllBtn.disabled = true;
+    layout();
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+  }
+
   decBtn.addEventListener('click', () => {
-    if (n > MIN_N) { n--; renderInputs(); }
+    if (n > MIN_N) { n--; renderInputs(); invalidateLadder(); }
   });
   incBtn.addEventListener('click', () => {
-    if (n < MAX_N) { n++; renderInputs(); }
+    if (n < MAX_N) { n++; renderInputs(); invalidateLadder(); }
   });
 
   function getNames() {
@@ -307,7 +318,9 @@
     const lineColor = isDark ? '#c8ccd4' : '#2b2f38';
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     ctx.strokeStyle = lineColor;
     ctx.font = '600 14px sans-serif';
     ctx.textAlign = 'center';
@@ -335,7 +348,7 @@
     if (highlightPaths) {
       highlightPaths.forEach(({ path, color }) => {
         ctx.strokeStyle = color;
-        ctx.lineWidth = 4;
+        ctx.lineWidth = 7;
         ctx.beginPath();
         path.forEach((p, idx) => {
           const x = colX[p.col];
@@ -379,7 +392,9 @@
 
         renderScene(null);
         ctx.strokeStyle = color;
-        ctx.lineWidth = 4;
+        ctx.lineWidth = 7;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
         ctx.beginPath();
         points.forEach((p, idx) => {
           if (idx === 0) ctx.moveTo(p.x, p.y);
