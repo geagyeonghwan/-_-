@@ -190,6 +190,7 @@
   const colColors = ['#4f7cff', '#ff6b6b', '#2bb673', '#ffb020', '#a56dff', '#00b8d9', '#ff5fa2', '#7c8b9c'];
 
   let ladder = null;
+  let animating = false;
   let colX = [];
   let rowY = [];
   const topGap = 60;
@@ -345,8 +346,55 @@
     }
   }
 
+  function animatePath(startCol, onDone) {
+    const { endCol, path } = traceFromTop(startCol, ladder.rungs);
+    const color = colColors[startCol % colColors.length];
+    const totalSegments = path.length - 1;
+    const duration = Math.max(500, totalSegments * 45);
+    const startTime = performance.now();
+
+    function frame(now) {
+      const t = Math.min(1, (now - startTime) / duration);
+      const progress = t * totalSegments;
+      const fullIdx = Math.floor(progress);
+      const frac = progress - fullIdx;
+
+      const points = path.slice(0, fullIdx + 1).map((p) => ({ x: colX[p.col], y: rowY[p.row] }));
+      if (fullIdx < totalSegments) {
+        const p1 = path[fullIdx];
+        const p2 = path[fullIdx + 1];
+        const x1 = colX[p1.col], y1 = rowY[p1.row];
+        const x2 = colX[p2.col], y2 = rowY[p2.row];
+        points.push({ x: x1 + (x2 - x1) * frac, y: y1 + (y2 - y1) * frac });
+      }
+
+      draw(null);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      points.forEach((p, idx) => {
+        if (idx === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.stroke();
+
+      if (t < 1) {
+        requestAnimationFrame(frame);
+      } else {
+        onDone(endCol);
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function setControlsDisabled(disabled) {
+    buildBtn.disabled = disabled;
+    rerollBtn.disabled = disabled || !ladder;
+    revealAllBtn.disabled = disabled || !ladder;
+  }
+
   function onCanvasClick(evt) {
-    if (!ladder) return;
+    if (!ladder || animating) return;
     const rect = canvas.getBoundingClientRect();
     const x = evt.clientX - rect.left;
     const y = evt.clientY - rect.top;
@@ -358,15 +406,20 @@
       if (d < minDist) { minDist = d; closest = i; }
     });
     if (minDist > 40) return;
-    const { endCol, path } = traceFromTop(closest, ladder.rungs);
-    draw([{ path, color: colColors[closest % colColors.length] }]);
-    const names = getNames();
-    const results = getResults();
+
+    animating = true;
+    setControlsDisabled(true);
     resultPanel.innerHTML = '';
-    const line = document.createElement('div');
-    line.className = 'result-line';
-    line.innerHTML = `<span>${names[closest]}</span><b>${results[endCol]}</b>`;
-    resultPanel.appendChild(line);
+    animatePath(closest, (endCol) => {
+      animating = false;
+      setControlsDisabled(false);
+      const names = getNames();
+      const results = getResults();
+      const line = document.createElement('div');
+      line.className = 'result-line';
+      line.innerHTML = `<span>${names[closest]}</span><b>${results[endCol]}</b>`;
+      resultPanel.appendChild(line);
+    });
   }
 
   function revealAll() {
