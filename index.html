@@ -193,6 +193,8 @@
   let animating = false;
   let colX = [];
   let rowY = [];
+  let canvasWidth = 0;
+  let canvasHeight = 0;
   const topGap = 60;
   const bottomGap = 60;
   const sideGap = 40;
@@ -290,14 +292,20 @@
     for (let r = 0; r <= rowCount; r++) {
       rowY.push(topGap + r * rowHeight);
     }
+    canvasWidth = width;
+    canvasHeight = height;
     return { width, height };
   }
 
   function draw(highlightPaths) {
+    layout();
+    renderScene(highlightPaths);
+  }
+
+  function renderScene(highlightPaths) {
     const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const lineColor = isDark ? '#c8ccd4' : '#2b2f38';
-    const { width, height } = layout();
-    ctx.clearRect(0, 0, width, height);
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
     ctx.lineWidth = 2;
     ctx.strokeStyle = lineColor;
@@ -354,36 +362,42 @@
     const startTime = performance.now();
 
     function frame(now) {
-      const t = Math.min(1, (now - startTime) / duration);
-      const progress = t * totalSegments;
-      const fullIdx = Math.floor(progress);
-      const frac = progress - fullIdx;
+      try {
+        const t = Math.min(1, (now - startTime) / duration);
+        const progress = t * totalSegments;
+        const fullIdx = Math.floor(progress);
+        const frac = progress - fullIdx;
 
-      const points = path.slice(0, fullIdx + 1).map((p) => ({ x: colX[p.col], y: rowY[p.row] }));
-      if (fullIdx < totalSegments) {
-        const p1 = path[fullIdx];
-        const p2 = path[fullIdx + 1];
-        const x1 = colX[p1.col], y1 = rowY[p1.row];
-        const x2 = colX[p2.col], y2 = rowY[p2.row];
-        points.push({ x: x1 + (x2 - x1) * frac, y: y1 + (y2 - y1) * frac });
-      }
+        const points = path.slice(0, fullIdx + 1).map((p) => ({ x: colX[p.col], y: rowY[p.row] }));
+        if (fullIdx < totalSegments) {
+          const p1 = path[fullIdx];
+          const p2 = path[fullIdx + 1];
+          const x1 = colX[p1.col], y1 = rowY[p1.row];
+          const x2 = colX[p2.col], y2 = rowY[p2.row];
+          points.push({ x: x1 + (x2 - x1) * frac, y: y1 + (y2 - y1) * frac });
+        }
 
-      draw(null);
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      points.forEach((p, idx) => {
-        if (idx === 0) ctx.moveTo(p.x, p.y);
-        else ctx.lineTo(p.x, p.y);
-      });
-      ctx.stroke();
+        renderScene(null);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        points.forEach((p, idx) => {
+          if (idx === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        });
+        ctx.stroke();
 
-      if (t < 1) {
-        requestAnimationFrame(frame);
-      } else {
+        if (t < 1) {
+          requestAnimationFrame(frame);
+        } else {
+          onDone(endCol);
+        }
+      } catch (err) {
+        console.error('사다리 애니메이션 오류:', err);
         onDone(endCol);
       }
     }
+    layout();
     requestAnimationFrame(frame);
   }
 
